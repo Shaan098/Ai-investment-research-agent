@@ -1,0 +1,149 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #0f1115;
+  color: #e8e8e8;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.app {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+
+h1 {
+  font-size: 1.8rem;
+  margin-bottom: 0.3rem;
+}
+
+.subtitle {
+  color: #9a9ea6;
+  margin-bottom: 2rem;
+}
+
+.search-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.search-form input {
+  flex: 1;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid #2a2d34;
+  background: #1a1c22;
+  color: #fff;
+  font-size: 1rem;
+}
+
+.search-form input:focus {
+  outline: none;
+  border-color: #5b8cff;
+}
+
+.search-form button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  border: none;
+  background: #5b8cff;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.search-form button:disabled {
+  background: #3a3d45;
+  cursor: not-allowed;
+}
+
+.status-box {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+}
+
+.loading-box {
+  background: #1a2440;
+  color: #a9c1ff;
+}
+
+.error-box {
+  background: #3a1a1a;
+  color: #ff9a9a;
+}
+
+.result-box {
+  margin-top: 2rem;
+  background: #1a1c22;
+  border: 1px solid #2a2d34;
+  border-radius: 10px;
+  padding: 1.5rem;
+}
+
+.decision-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.decision-badge {
+  padding: 0.3rem 0.8rem;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.decision-badge.invest {
+  background: #1a3a2a;
+  color: #6fdb9a;
+}
+
+.decision-badge.pass {
+  background: #3a1a1a;
+  color: #ff9a9a;
+}
+
+.confidence {
+  color: #9a9ea6;
+  font-size: 0.9rem;
+}
+
+.result-box h3 {
+  margin-top: 1.2rem;
+  margin-bottom: 0.4rem;
+  font-size: 1rem;
+  color: #b8bcc4;
+}
+
+.result-box p,
+.result-box li {
+  line-height: 1.6;
+  color: #d6d6d6;
+}
+
+.sources-list a {
+  color: #5b8cff;
+  text-decoration: none;
+}
+
+.sources-list a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 640px) {
+  .search-form {
+    flex-direction: column;
+  }
+
+  .search-form button {
+    width: 100%;
+  }
+}
