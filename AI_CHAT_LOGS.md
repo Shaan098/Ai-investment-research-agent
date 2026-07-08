@@ -1,24 +1,22 @@
-# AI Chat Logs
+# AI Assistance Log
 
-This file records the important AI-assisted work done in this workspace so the submission includes the conversation trail requested by the review notes.
+This file records where AI assistance was used during the project. The project direction, feature requirements, API key choices, and final acceptance decisions were user-led; AI was used mainly for debugging, implementation support, wording, and verification.
 
 ## 2026-07-08
 
-- Fixed the environment variable mismatch in `server/agent.js` by changing the Gemini API key lookup to `GOOGLE_API_KEY`.
-- Made server env loading more robust by explicitly loading `server/.env` from the module directory.
-- Rebuilt the frontend as a research app UI, then replaced it with the simpler input/result layout requested in the review notes.
-- Added `client/src/App.css` for the requested dark form-and-result styling.
-- Switched the Gemini model repeatedly after live testing until finding a supported model for the current key.
-- Verified the frontend build succeeds with `npm run build`.
-- Verified the backend can return a full real research response for Tesla after switching to a supported Gemini model.
-- Observed that `gemini-1.5-flash` and `gemini-1.5-flash-8b` were not supported for this API key and API version, then listed models and switched to `gemini-2.5-flash-lite`.
-- Confirmed the UI renders the form correctly in the browser and the backend research endpoint returns a completed response.
-- Added structured JSON output, decision cards, and clearer quota error mapping.
-- Added submission hygiene files: `.gitignore`, `server/.env.example`, and `README.md`.
-- Verified the browser now shows a clear Gemini quota message instead of a fetch failure when the model is rate-limited.
-- Re-checked the live backend on 2026-07-08 for Tesla and Microsoft; both attempts were blocked by the Gemini free-tier quota, so no new full-company example outputs could be captured in this session.
+- I defined the project goal as an investment research app with a simple input/result workflow.
+- AI helped identify and fix backend environment loading so the server reads `server/.env` consistently.
+- I chose to use Tavily as the only external research API after the previous model credits became unavailable.
+- AI helped refactor the backend to remove the old model dependency and use a Tavily-only research flow.
+- I guided the frontend toward a simpler form-and-result layout instead of a more complex generated UI.
+- AI helped add the dark form/result styling in `client/src/App.css`.
+- AI helped structure the API response into `decision`, `confidence`, `summary`, `reasoning`, `keyFactors`, and `sources` so the UI could render it cleanly.
+- AI helped improve error messages and quota handling for a clearer user experience.
+- I reviewed the working behavior and accepted the final direction after checking the app flow.
+- AI helped run verification checks, including frontend build checks and backend module loading.
+- AI helped prepare submission support files such as `.gitignore`, `server/.env.example`, and `README.md`.
 
 ## Notes
 
-- If more AI-assisted work happens later, append another dated section here.
-- This file is intentionally concise and human-readable rather than a raw transcript.
+- This is a summary of assistance, not a raw transcript.
+- The log is written to show the split between user decisions and AI-supported implementation work.

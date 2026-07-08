@@ -23,10 +23,10 @@ app.post('/api/research', async (req, res) => {
   } catch (err) {
     console.error(err);
     const message = err?.message || 'Something went wrong';
-    const isQuotaError = /429|quota|rate limit|RateLimitQuotaExhaustedError/i.test(message);
+    const isQuotaError = /429|quota|rate limit/i.test(message);
     res.status(isQuotaError ? 429 : 500).json({
       error: isQuotaError
-        ? 'Gemini quota limit reached. Please wait a moment and try again.'
+        ? 'Tavily quota or rate limit reached. Please wait a moment and try again.'
         : 'Something went wrong',
       details: message,
     });

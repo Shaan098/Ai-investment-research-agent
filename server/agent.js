@@ -1,113 +1,157 @@
-const { ChatGoogleGenerativeAI } = require("@langchain/google-genai");
 const { TavilySearch } = require("@langchain/tavily");
-const { createReactAgent } = require("@langchain/langgraph/prebuilt");
-const { HumanMessage, SystemMessage } = require("@langchain/core/messages");
-const { z } = require("zod");
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
 
-// 1. The LLM — Google Gemini
-const llm = new ChatGoogleGenerativeAI({
-  apiKey: process.env.GOOGLE_API_KEY,
-  model: "gemini-2.5-flash-lite",
-  temperature: 0,
-});
-
-const structuringLlm = new ChatGoogleGenerativeAI({
-  apiKey: process.env.GOOGLE_API_KEY,
-  model: "gemini-2.5-flash-lite",
-  temperature: 0,
-});
-
-// 2. Search tool
 const searchTool = new TavilySearch({
-  apiKey: process.env.TAVILY_API_KEY,
+  tavilyApiKey: process.env.TAVILY_API_KEY,
   maxResults: 5,
+  searchDepth: "advanced",
+  includeAnswer: true,
+  topic: "finance",
 });
 
-// 3. ReAct agent
-const agentExecutor = createReactAgent({
-  llm,
-  tools: [searchTool],
-});
+const SEARCH_QUERIES = [
+  "{company} recent financial performance earnings revenue profit",
+  "{company} latest leadership changes major announcements",
+  "{company} legal regulatory controversy risk",
+  "{company} competitors industry trends market position",
+];
 
-// 4. System prompt
-const SYSTEM_PROMPT = `You are an investment research analyst.
-Given a company name, research it using the search tool by looking into:
-- Recent financial performance and earnings
-- Leadership changes or major announcements
-- Legal, regulatory, or controversy issues
-- Competitive position and industry trends
+const POSITIVE_TERMS = [
+  "growth",
+  "profit",
+  "profitable",
+  "beat",
+  "strong",
+  "record",
+  "upgrade",
+  "raises guidance",
+  "expansion",
+  "market share",
+];
 
-Use the search tool as many times as needed (at least 2-3 searches) to gather enough information.
-If the company cannot be found or search results are empty/irrelevant, clearly say so instead of guessing.
-Once you have enough information, respond with your findings in plain text, including source URLs.`;
+const NEGATIVE_TERMS = [
+  "loss",
+  "decline",
+  "miss",
+  "lawsuit",
+  "probe",
+  "investigation",
+  "regulatory",
+  "fine",
+  "layoffs",
+  "debt",
+  "downgrade",
+  "risk",
+  "controversy",
+];
 
-const DecisionSchema = z.object({
-  decision: z.enum(["INVEST", "PASS"]),
-  confidence: z.number().min(0).max(1),
-  summary: z.string(),
-  reasoning: z.string(),
-  keyFactors: z.array(z.string()),
-  sources: z.array(
-    z.object({
-      claim: z.string(),
-      url: z.string(),
-    })
-  ),
-});
+function normalizeResult(result) {
+  return {
+    title: result.title || "Untitled source",
+    url: result.url || "",
+    content: result.content || result.snippet || "",
+    score: result.score || 0,
+  };
+}
 
-const structuredLlm = structuringLlm.withStructuredOutput(DecisionSchema);
+function dedupeResults(results) {
+  const seen = new Set();
 
-function getMessageContent(message) {
-  if (!message) {
-    return "";
+  return results.filter((result) => {
+    if (!result.url || seen.has(result.url)) {
+      return false;
+    }
+
+    seen.add(result.url);
+    return true;
+  });
+}
+
+function countTerms(text, terms) {
+  const lowerText = text.toLowerCase();
+
+  return terms.reduce((count, term) => {
+    return lowerText.includes(term) ? count + 1 : count;
+  }, 0);
+}
+
+function sentenceFromResult(result) {
+  const text = result.content.replace(/\s+/g, " ").trim();
+
+  if (!text) {
+    return result.title;
   }
 
-  if (typeof message.content === "string") {
-    return message.content;
+  const firstSentence = text.match(/^(.{40,220}?[.!?])\s/)?.[1];
+  return firstSentence || text.slice(0, 220);
+}
+
+function buildKeyFactors(results) {
+  return results.slice(0, 5).map((result) => {
+    return `${result.title}: ${sentenceFromResult(result)}`;
+  });
+}
+
+function buildDecision(results) {
+  if (results.length < 3) {
+    return {
+      decision: "PASS",
+      confidence: 0.35,
+      summary: "Not enough reliable Tavily search results were found to support an investment call.",
+      reasoning:
+        "The Tavily-only flow needs multiple current sources before it can make a basic evidence-backed call. With too little evidence, the safer decision is PASS.",
+    };
   }
 
-  if (Array.isArray(message.content)) {
-    return message.content
-      .map((part) => {
-        if (typeof part === "string") {
-          return part;
-        }
+  const combinedText = results.map((result) => `${result.title} ${result.content}`).join(" ");
+  const positiveSignals = countTerms(combinedText, POSITIVE_TERMS);
+  const negativeSignals = countTerms(combinedText, NEGATIVE_TERMS);
+  const decision = positiveSignals > negativeSignals + 1 ? "INVEST" : "PASS";
+  const signalGap = Math.abs(positiveSignals - negativeSignals);
+  const confidence = Math.min(0.85, 0.45 + results.length * 0.03 + signalGap * 0.04);
 
-        if (part && typeof part === "object" && "text" in part) {
-          return part.text;
-        }
+  return {
+    decision,
+    confidence: Number(confidence.toFixed(2)),
+    summary:
+      decision === "INVEST"
+        ? "Tavily search results show more positive business and financial signals than negative risk signals."
+        : "Tavily search results do not show a strong enough positive signal to justify an INVEST call.",
+    reasoning:
+      `This Tavily-only analysis reviewed ${results.length} search results and found ` +
+      `${positiveSignals} positive signal(s) versus ${negativeSignals} risk signal(s). ` +
+      "Because no LLM is being used, the decision is based on transparent keyword and source-count heuristics rather than generated analysis.",
+  };
+}
 
-        return "";
-      })
-      .filter(Boolean)
-      .join("\n");
+async function runSearch(query) {
+  const response = await searchTool.invoke({ query });
+
+  if (response?.error) {
+    return [];
   }
 
-  return String(message.content);
+  return (response?.results || []).map(normalizeResult);
 }
 
 async function researchCompany(companyName) {
-  const result = await agentExecutor.invoke(
-    {
-    messages: [
-      new SystemMessage(SYSTEM_PROMPT),
-      new HumanMessage(`Research this company: ${companyName}`),
-    ],
-  },
-    { recursionLimit: 15 }
+  const searches = await Promise.all(
+    SEARCH_QUERIES.map((queryTemplate) => {
+      return runSearch(queryTemplate.replace("{company}", companyName));
+    })
   );
+  const results = dedupeResults(searches.flat()).sort((a, b) => b.score - a.score);
+  const decision = buildDecision(results);
 
-  const finalMessage = result.messages[result.messages.length - 1];
-  const rawFindings = getMessageContent(finalMessage);
-
-  return structuredLlm.invoke([
-    new SystemMessage(
-      "You convert raw investment research findings into a structured JSON object. Do not invent facts that are not supported by the findings. If the findings do not support a strong thesis, choose PASS and explain why."
-    ),
-    new HumanMessage(`Company: ${companyName}\n\nRaw findings:\n${rawFindings}`),
-  ]);
+  return {
+    ...decision,
+    keyFactors: buildKeyFactors(results),
+    sources: results.slice(0, 8).map((result) => ({
+      claim: result.title,
+      url: result.url,
+    })),
+  };
 }
 
 module.exports = { researchCompany };

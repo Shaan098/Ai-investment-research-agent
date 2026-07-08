@@ -6,6 +6,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
+  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || ''
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -16,16 +17,21 @@ function App() {
     setResult(null)
 
     try {
-      const res = await fetch('http://localhost:5000/api/research', {
+      const res = await fetch(`${apiBaseUrl}/api/research`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ companyName: companyName.trim() }),
       })
 
-      const data = await res.json()
+      const responseText = await res.text()
+      const data = responseText ? JSON.parse(responseText) : null
 
       if (!res.ok) {
-        throw new Error(data.error || 'Something went wrong')
+        throw new Error(data?.error || 'Server returned an empty or invalid response')
+      }
+
+      if (!data?.result) {
+        throw new Error('Server returned an empty or invalid response')
       }
 
       setResult(data.result)
