@@ -6,7 +6,9 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [result, setResult] = useState(null)
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || ''
+ const apiBaseUrl =
+  import.meta.env.VITE_API_BASE_URL ||
+  "https://ai-investment-research-agent-cyvk.onrender.com";
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -16,31 +18,40 @@ function App() {
     setError('')
     setResult(null)
 
-    try {
-      const res = await fetch(`${apiBaseUrl}/api/research`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companyName: companyName.trim() }),
-      })
+  try {
+  const res = await fetch(`${apiBaseUrl}/api/research`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      companyName: companyName.trim(),
+    }),
+  });
 
-      const responseText = await res.text()
-      const data = responseText ? JSON.parse(responseText) : null
+  const contentType = res.headers.get("content-type");
 
-      if (!res.ok) {
-        throw new Error(data?.error || 'Server returned an empty or invalid response')
-      }
-
-      if (!data?.result) {
-        throw new Error('Server returned an empty or invalid response')
-      }
-
-      setResult(data.result)
-    } catch (err) {
-      setError(err.message || 'Failed to reach the server')
-    } finally {
-      setLoading(false)
-    }
+  if (!contentType || !contentType.includes("application/json")) {
+    const text = await res.text();
+    throw new Error(`Server returned non-JSON:\n${text}`);
   }
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data.error || "Server error");
+  }
+
+  if (!data.result) {
+    throw new Error("Server returned an invalid response.");
+  }
+
+  setResult(data.result);
+} catch (err) {
+  setError(err.message || "Failed to reach the server");
+} finally {
+  setLoading(false);
+}
 
   return (
     <div className="app">
