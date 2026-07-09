@@ -1,63 +1,68 @@
-import { useState } from 'react'
-import './App.css'
+import { useState } from "react";
+import "./App.css";
 
 function App() {
-  const [companyName, setCompanyName] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [result, setResult] = useState(null)
- const apiBaseUrl =
-  import.meta.env.VITE_API_BASE_URL ||
-  "https://ai-investment-research-agent-cyvk.onrender.com";
+  const [companyName, setCompanyName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState(null);
+
+  const apiBaseUrl =
+    import.meta.env.VITE_API_BASE_URL ||
+    "https://ai-investment-research-agent-cyvk.onrender.com";
 
   async function handleSubmit(e) {
-    e.preventDefault()
-    if (!companyName.trim()) return
+    e.preventDefault();
 
-    setLoading(true)
-    setError('')
-    setResult(null)
+    if (!companyName.trim()) return;
 
-  try {
-  const res = await fetch(`${apiBaseUrl}/api/research`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      companyName: companyName.trim(),
-    }),
-  });
+    setLoading(true);
+    setError("");
+    setResult(null);
 
-  const contentType = res.headers.get("content-type");
+    try {
+      const res = await fetch(`${apiBaseUrl}/api/research`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          companyName: companyName.trim(),
+        }),
+      });
 
-  if (!contentType || !contentType.includes("application/json")) {
-    const text = await res.text();
-    throw new Error(`Server returned non-JSON:\n${text}`);
+      const contentType = res.headers.get("content-type");
+
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await res.text();
+        throw new Error(`Server returned non-JSON:\n${text}`);
+      }
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Server error");
+      }
+
+      if (!data.result) {
+        throw new Error("Server returned an invalid response.");
+      }
+
+      setResult(data.result);
+    } catch (err) {
+      setError(err.message || "Failed to reach the server");
+    } finally {
+      setLoading(false);
+    }
   }
-
-  const data = await res.json();
-
-  if (!res.ok) {
-    throw new Error(data.error || "Server error");
-  }
-
-  if (!data.result) {
-    throw new Error("Server returned an invalid response.");
-  }
-
-  setResult(data.result);
-} catch (err) {
-  setError(err.message || "Failed to reach the server");
-} finally {
-  setLoading(false);
-}
 
   return (
     <div className="app">
       <h1>AI Investment Research Agent</h1>
+
       <p className="subtitle">
-        Enter a company name — the agent will research it and give you an Invest/Pass call.
+        Enter a company name — the agent will research it and give you an
+        Invest/Pass call.
       </p>
 
       <form onSubmit={handleSubmit} className="search-form">
@@ -68,26 +73,42 @@ function App() {
           placeholder="e.g. Tesla, Zomato, Infosys"
           disabled={loading}
         />
-        <button type="submit" disabled={loading || !companyName.trim()}>
-          {loading ? 'Researching…' : 'Research'}
+
+        <button
+          type="submit"
+          disabled={loading || !companyName.trim()}
+        >
+          {loading ? "Researching..." : "Research"}
         </button>
       </form>
 
       {loading && (
         <div className="status-box loading-box">
-          Agent is searching the web and analyzing findings. This can take 15–30 seconds…
+          Agent is searching the web and analyzing findings. This can take
+          15–30 seconds...
         </div>
       )}
 
-      {error && <div className="status-box error-box">{error}</div>}
+      {error && (
+        <div className="status-box error-box">
+          {error}
+        </div>
+      )}
 
       {result && (
         <div className="result-box">
           <div className="decision-header">
-            <span className={`decision-badge ${result.decision === 'INVEST' ? 'invest' : 'pass'}`}>
+            <span
+              className={`decision-badge ${
+                result.decision === "INVEST" ? "invest" : "pass"
+              }`}
+            >
               {result.decision}
             </span>
-            <span className="confidence">Confidence: {Math.round(result.confidence * 100)}%</span>
+
+            <span className="confidence">
+              Confidence: {Math.round(result.confidence * 100)}%
+            </span>
           </div>
 
           <h3>Summary</h3>
@@ -107,7 +128,11 @@ function App() {
           <ul className="sources-list">
             {(result.sources || []).map((src, i) => (
               <li key={i}>
-                <a href={src.url} target="_blank" rel="noreferrer">
+                <a
+                  href={src.url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   {src.claim}
                 </a>
               </li>
@@ -116,7 +141,7 @@ function App() {
         </div>
       )}
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
