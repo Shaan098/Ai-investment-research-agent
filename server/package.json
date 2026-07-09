@@ -4,22 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "@langchain/anthropic": "^1.5.1",
-    "@langchain/community": "^1.1.29",
-    "@langchain/core": "^1.2.1",
-    "@langchain/langgraph": "^1.4.7",
-    "@langchain/openai": "^1.5.3",
     "@langchain/tavily": "^1.2.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1",
-    "langchain": "^1.5.2",
-    "zod": "^4.4.3"
+    "express": "^5.2.1"
   }
 }

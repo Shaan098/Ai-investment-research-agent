@@ -1,125 +1,211 @@
 # Investment Research Agent
 
-A small full-stack app that researches a public company and returns an investment call with supporting evidence.
+A full-stack investment research app that takes a company name, searches the web with Tavily, and returns a simple `INVEST` or `PASS` call with confidence, reasoning, key factors, and source links.
 
-## Overview
+## Features
 
-The app has two parts:
+- Search any public company from a clean React form.
+- Backend runs multiple targeted Tavily finance searches.
+- Results are deduplicated and ranked by Tavily score.
+- Output includes:
+  - investment decision
+  - confidence score
+  - summary
+  - reasoning
+  - key factors
+  - clickable sources
+- Friendly API errors for missing input and Tavily quota/rate limits.
+- `.env` is ignored so API keys are not committed.
 
-- `server/` runs an Express API that uses a ReAct agent with Gemini and Tavily search.
-- `client/` is a React frontend that lets you submit a company name and displays the result.
+## Tech Stack
 
-The backend researches the company first, then converts the findings into a structured decision object for the UI.
+- Frontend: React + Vite
+- Backend: Node.js + Express
+- Research API: Tavily through `@langchain/tavily`
+- Config: `dotenv`
 
-## How to Run
+## Project Structure
 
-### Requirements
+```text
+investment-research-agent/
+  client/                 React frontend
+    src/App.jsx           Main UI and API call
+    src/App.css           App styling
+    vite.config.js        Dev server and /api proxy
 
-- Node.js 18+ recommended
-- A valid `GOOGLE_API_KEY`
-- A valid `TAVILY_API_KEY`
+  server/                 Express backend
+    index.js              API routes
+    agent.js              Tavily research and scoring logic
+    .env.example          Required environment variables
 
-### Environment Variables
+  AI_CHAT_LOGS.md         Summary of AI-assisted work
+  README.md               Project documentation
+```
 
-Create `server/.env` with:
+## Requirements
+
+- Node.js 18 or newer
+- A valid Tavily API key
+
+## Environment Setup
+
+Create `server/.env`:
 
 ```bash
-GOOGLE_API_KEY=your_google_api_key
 TAVILY_API_KEY=your_tavily_api_key
 PORT=5000
 ```
 
-For reference, `server/.env.example` is included with the variable names only.
+`server/.env.example` contains the same variable names without secrets.
 
-### Install
+## Install Dependencies
 
-Install dependencies in both folders:
+Install backend dependencies:
 
 ```bash
 cd server
 npm install
+```
 
+Install frontend dependencies:
+
+```bash
 cd ../client
 npm install
 ```
 
-### Start the App
+## Run Locally
 
-Run the backend:
+Start the backend:
 
 ```bash
 cd server
 node index.js
 ```
 
-Run the frontend in another terminal:
+The backend runs on:
+
+```text
+http://localhost:5000
+```
+
+Start the frontend in another terminal:
 
 ```bash
 cd client
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173).
+Open:
 
-## How It Works
+```text
+http://localhost:5173
+```
 
-The backend uses a two-pass flow:
+The Vite dev server proxies `/api` requests to the Express backend.
 
-1. A Gemini-powered ReAct agent searches the web with Tavily and gathers raw findings.
-2. A second Gemini pass converts those findings into structured JSON with:
-   - `decision`
-   - `confidence`
-   - `summary`
-   - `reasoning`
-   - `keyFactors`
-   - `sources`
+## API Endpoints
 
-The frontend renders that structured object as cards, badges, bullet lists, and clickable source links.
+### Health Check
 
-## Key Decisions & Trade-offs
+```http
+GET /api/health
+```
 
-- Two-pass output was used so the agent can research freely first, then render clean structured data for the UI.
-- `recursionLimit: 15` is set as a safety net so the ReAct loop cannot wander forever.
-- The backend now maps Gemini quota failures to a friendly `429` response instead of a vague fetch error.
-- The model moved through several options during testing. The working model for this key is `gemini-2.5-flash-lite`.
-- `.gitignore` excludes `node_modules/`, `dist/`, and `.env` so the submission stays small and does not leak secrets.
+Example response:
 
-## Example Runs
+```json
+{
+  "status": "Server is running!"
+}
+```
 
-The live backend was re-checked on 2026-07-08, but Gemini free-tier quota was exhausted during verification, so this section currently includes the captured Tesla example plus the quota error path.
+### Research Company
 
-### Tesla - captured structured result
+```http
+POST /api/research
+Content-Type: application/json
+```
 
-Verified API output from `POST /api/research`:
+Request body:
+
+```json
+{
+  "companyName": "Tesla"
+}
+```
+
+Example response shape:
 
 ```json
 {
   "result": {
     "decision": "PASS",
-    "confidence": 0,
-    "summary": "Unable to retrieve any information about Tesla.",
-    "reasoning": "The provided findings explicitly state that no information could be retrieved for Tesla. Therefore, no investment decision can be made.",
-    "keyFactors": ["Lack of data"],
-    "sources": []
+    "confidence": 0.64,
+    "summary": "Tavily search results do not show a strong enough positive signal to justify an INVEST call.",
+    "reasoning": "This Tavily-only analysis reviewed 12 search results and found 4 positive signal(s) versus 5 risk signal(s). Because no LLM is being used, the decision is based on transparent keyword and source-count heuristics rather than generated analysis.",
+    "keyFactors": [
+      "Source title: Short supporting finding from the search result."
+    ],
+    "sources": [
+      {
+        "claim": "Source title",
+        "url": "https://example.com/article"
+      }
+    ]
   }
 }
 ```
 
-### Tesla - quota-limited response
+## How The Research Works
 
-When the Gemini quota is exhausted, the API returns a friendly 429:
+The backend runs four Tavily searches for each company:
+
+- recent financial performance, earnings, revenue, and profit
+- leadership changes and major announcements
+- legal, regulatory, controversy, and risk issues
+- competitors, industry trends, and market position
+
+The results are normalized, deduplicated by URL, sorted by Tavily score, and then analyzed with a simple heuristic:
+
+- positive terms include words like `growth`, `profit`, `strong`, `upgrade`, and `market share`
+- negative terms include words like `loss`, `decline`, `lawsuit`, `regulatory`, `debt`, and `controversy`
+- the app returns `INVEST` only when positive signals clearly outweigh risk signals
+- otherwise, it returns `PASS`
+
+This keeps the app independent from separate LLM credits while still producing a structured research summary.
+
+## Limitations
+
+- This is not financial advice.
+- The decision is heuristic-based, not a professional valuation model.
+- Search quality depends on Tavily results and available public sources.
+- The app does not currently cache results, so repeated searches can use more Tavily quota.
+- Very recent or obscure companies may return incomplete results.
+
+## Error Handling
+
+If `companyName` is missing, the API returns:
 
 ```json
 {
-  "error": "Gemini quota limit reached. Please wait a moment and try again.",
-  "details": "[GoogleGenerativeAI Error]: ..."
+  "error": "companyName is required"
 }
 ```
 
-## What I Would Improve Next
+If Tavily quota or rate limits are reached, the API returns:
 
-- Add caching so repeated company searches do not hit Gemini every time.
-- Store structured results for later viewing.
-- Add a retry strategy when the quota window resets.
-- Add deployment configuration for a hosted demo.
-- Add more sample runs once the Gemini quota is available again.
+```json
+{
+  "error": "Tavily quota or rate limit reached. Please wait a moment and try again.",
+  "details": "Error details from the Tavily request"
+}
+```
+
+## Future Improvements
+
+- Add result caching to reduce Tavily usage.
+- Store previous research reports.
+- Add filters for region, sector, or time range.
+- Improve scoring with more finance-specific signals.
+- Add charts or financial metrics when reliable data is available.
