@@ -14,10 +14,14 @@ app.get('/api/health', (req, res) => {
 
 app.post('/api/research', async (req, res) => {
   try {
-    const { companyName } = req.body;
+    const companyName = req.body?.companyName;
+
     if (!companyName) {
-      return res.status(400).json({ error: 'companyName is required' });
+      return res.status(400).json({
+        error: 'companyName is required',
+      });
     }
+
     const result = await researchCompany(companyName);
     res.json({ result });
   } catch (err) {
